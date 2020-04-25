@@ -25,6 +25,7 @@ public:
 	}
 
 	double Cheer(int user_id) const {
+		if (user_page_counts.count(user_id) == 0) return 0.;
 		if (user_page_counts.size() == 0) return 0.;
 		if (user_page_counts.at(user_id) == 0) return 0.;
 		if (user_page_counts.size() == 1) return 1.;
