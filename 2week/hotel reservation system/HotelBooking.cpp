@@ -5,6 +5,7 @@
 #include <utility>
 #include <string>
 #include <map>
+#include <set>
 #include <functional>
 #include <numeric>
 #include <queue>
@@ -12,56 +13,70 @@ using namespace std;
 
 class HotelBookingManager {
 public:
-	HotelBookingManager() {}
+	HotelBookingManager() = default;
 
-	void Book(int64_t time, string hotel_name, int client_id, int room_count)
+	void Book(int64_t time, const string& hotel_name, int client_id, int room_count)
 	{
-		hotels_reservations[hotel_name].push(Reservation{ time, hotel_name, client_id, room_count });
-		client_booking_counts[hotel_name][client_id] += room_count;
-		removeResevationByCurrentTime(time);
+		auto& hotel = hotel_booking[hotel_name];
+		hotel.reservation.push(Reservation{ time, client_id, room_count });
+		hotel.clients_rooms[client_id] += room_count;
+		hotel.bookedRooms += room_count;
+
+		current_time = time;
 	}
 
-	int Clients(string hotel_name)
+	int Clients(const string& hotel_name)
 	{
-		return client_booking_counts[hotel_name].size();
+		removeResevation(hotel_name);
+
+		return hotel_booking[hotel_name].clients_rooms.size();
 	}
 
-	int Rooms(string hotel_name)
+	int Rooms(const string& hotel_name)
 	{
-		int rooms = 0;
-		for (auto info : client_booking_counts[hotel_name])
-		{
-			rooms += info.second;
-		}
+		removeResevation(hotel_name);
 
-		return rooms;
+		return hotel_booking[hotel_name].bookedRooms;
 	}
 
 private:
-	static const int MAX_CLIENTS_COUNT_ = 1'000'000'000;
-	static const int MAX_ROOMS_COUNT_ = 1'000;
-	static const int TIME_WINDOW_SIZE = 86'400;
+
+	const int TIME_WINDOW_SIZE = 86'400;
+
 	struct Reservation
 	{
 		int64_t time;
-		string hotel_name;
 		int client_id;
 		int room_count;
 	};
-	map<string, map<int, int>> client_booking_counts;
-	map<string, queue<Reservation>> hotels_reservations;
 
-	void removeResevationByCurrentTime(int64_t current_time)
+	struct infoHotel
 	{
-		for (auto& hotel : hotels_reservations)
+		queue<Reservation> reservation;
+		map<int, int> clients_rooms;
+		int bookedRooms = 0;
+	};
+
+	map<string, infoHotel> hotel_booking;
+	int64_t current_time;
+
+	void removeResevation(const string& hotel_name)
+	{
+		auto& info = hotel_booking[hotel_name];
+
+		while (!info.reservation.empty() && current_time - info.reservation.front().time >= TIME_WINDOW_SIZE)
 		{
-			while (!hotel.second.empty() && current_time - hotel.second.front().time >= TIME_WINDOW_SIZE)
-			{
-				auto info = hotel.second.front();
-				client_booking_counts[info.hotel_name][info.client_id] -= info.room_count;
-				hotel.second.pop();
-			}
+			auto& reservation = info.reservation.front();
+			auto& client_room = info.clients_rooms[reservation.client_id];
+			client_room -= reservation.room_count;
+
+			if (client_room <= 0) info.clients_rooms.erase(reservation.client_id);
+
+			info.bookedRooms -= reservation.room_count;
+			info.reservation.pop();
+
 		}
+
 	}
 };
 
