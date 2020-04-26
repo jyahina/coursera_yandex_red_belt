@@ -40,8 +40,13 @@ public:
 	};
 
 	~ObjectPool() {
-		allocator.clear();
-		while (!deallocator.empty()) deallocator.pop();
+		for (auto elem : allocator) 
+			delete elem;
+
+		while (!deallocator.empty()) {
+			delete deallocator.front();
+			deallocator.pop();
+		}
 
 	};
 
